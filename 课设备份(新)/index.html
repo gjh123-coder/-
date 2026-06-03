@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>校园活动数据可视化分析平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background: #f5f7ff;
+            padding: 20px;
+        }
+        .page-title {
+            text-align: center;
+            font-size: 28px;
+            color: #165DFF;
+            margin: 10px 0 20px 0;
+        }
+
+        /* 统计卡片 */
+        .stat-panel {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            width: 200px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .stat-card .label {
+            font-size: 14px;
+            color: #666;
+        }
+        .stat-card .num {
+            font-size: 22px;
+            font-weight: bold;
+            color: #165DFF;
+            margin-top: 5px;
+            min-height: 30px;
+        }
+
+        .tab-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #e8f3ff;
+            color: #165DFF;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: #165DFF;
+            color: #fff;
+        }
+
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+        }
+        .chart-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            height: 340px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .table-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th {
+            background: #165DFF;
+            color: #fff;
+            padding: 10px;
+            font-size: 14px;
+        }
+        td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .add-btn {
+            margin-bottom: 15px;
+            padding: 8px 16px;
+            background: #165DFF;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .pagination {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            background: #e8f3ff;
+            border: none;
+            border-radius: 4px;
+            color: #165DFF;
+            cursor: pointer;
+        }
+        .op-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 0 2px;
+        }
+        .btn-edit { background: #165DFF; }
+        .btn-del { background: #ff4444; }
+
+        .mask {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 999;
+        }
+        .dialog {
+            background: #fff;
+            width: 600px;
+            padding: 25px;
+            border-radius: 12px;
+        }
+        .form-item {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .form-item label {
+            width: 100px;
+            font-weight: bold;
+        }
+        .form-item input,
+        .form-item select {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .btns {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .btns button {
+            padding: 8px 20px;
+            margin: 0 6px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <h1 class="page-title">校园活动数据可视化分析平台</h1>
+
+    <!-- 大数据统计面板 → 数字滚动动画 -->
+    <div class="stat-panel">
+        <div class="stat-card">
+            <div class="label">活动总数</div>
+            <div class="num">{{ showTotal }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">总报名人数</div>
+            <div class="num">{{ showSign }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">总签到人数</div>
+            <div class="num">{{ showCheckin }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">平均学分</div>
+            <div class="num">{{ showScore }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">出勤率</div>
+            <div class="num">{{ showRate }}%</div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn" :class="{active:currentPage===1}" @click="switchPage(1)">图表统计</button>
+        <button class="tab-btn" :class="{active:currentPage===2}" @click="switchPage(2)">数据列表</button>
+    </div>
+
+    <div v-if="currentPage === 1" class="chart-container">
+        <div class="chart-box" ref="chart1"></div>
+        <div class="chart-box" ref="chart2"></div>
+        <div class="chart-box" ref="chart3"></div>
+        <div class="chart-box" ref="chart4"></div>
+        <div class="chart-box" ref="chart5"></div>
+        <div class="chart-box" ref="chart6"></div>
+    </div>
+
+    <div v-if="currentPage === 2" class="table-box">
+        <button class="add-btn" @click="openAdd">➕ 新增活动</button>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th>rowKey</th>
+                    <th>活动ID</th>
+                    <th>活动名称</th>
+                    <th>类型</th>
+                    <th>主办单位</th>
+                    <th>级别</th>
+                    <th>活动状态</th>
+                    <th>审核状态</th>
+                    <th>开始时间</th>
+                    <th>结束时间</th>
+                    <th>地点</th>
+                    <th>报名</th>
+                    <th>签到</th>
+                    <th>学时</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="(item,i) in pageList">
+                    <td>{{item.rowKey}}</td>
+                    <td>{{item.activity_id}}</td>
+                    <td>{{item.activity_name}}</td>
+                    <td>{{item.activity_type}}</td>
+                    <td>{{item.publish_unit}}</td>
+                    <td>{{item.activity_level}}</td>
+                    <td>{{item.activity_status}}</td>
+                    <td>{{item.audit_status}}</td>
+                    <td>{{item.start_time}}</td>
+                    <td>{{item.end_time}}</td>
+                    <td>{{item.activity_place}}</td>
+                    <td>{{item.sign_num}}</td>
+                    <td>{{item.checkin_num}}</td>
+                    <td>{{item.score}}</td>
+                    <td>
+                        <button class="op-btn btn-edit" @click="openEdit(item)">修改状态</button>
+                        <button class="op-btn btn-del" @click="doDelete(item)">删除</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination">
+            <button @click="page=1">首页</button>
+            <button @click="page--" :disabled="page<=1">上页</button>
+            <span>第{{page}}页</span>
+            <button @click="page++" :disabled="page>=totalPage">下页</button>
+            <button @click="page=totalPage">末页</button>
+        </div>
+    </div>
+
+    <div class="mask" v-if="showAdd">
+        <div class="dialog">
+            <h3 style="margin-bottom:15px;text-align:center;color:#165DFF">新增活动</h3>
+            <div class="form-item"><label>活动ID</label><input v-model="addForm.activity_id"></div>
+            <div class="form-item"><label>活动名称</label><input v-model="addForm.activity_name"></div>
+            <div class="form-item"><label>活动类型</label><select v-model="addForm.activity_type"><option value="">请选择</option><option>文体艺术</option><option>志愿服务</option><option>创新创业</option><option>学术讲座</option><option>班会活动</option></select></div>
+            <div class="form-item"><label>主办单位</label><select v-model="addForm.publish_unit"><option value="">请选择</option><option>计算机学院</option><option>外国语学院</option><option>教育学院</option><option>美术学院</option><option>法学院</option><option>经济学院</option><option>志愿者协会</option></select></div>
+            <div class="form-item"><label>活动级别</label><select v-model="addForm.activity_level"><option value="">请选择</option><option>校级</option><option>院级</option><option>班级级</option></select></div>
+            <div class="form-item"><label>活动地点</label><input v-model="addForm.activity_place"></div>
+            <div class="form-item"><label>开始时间</label><input id="startTime" v-model="addForm.start_time"></div>
+            <div class="form-item"><label>结束时间</label><input id="endTime" v-model="addForm.end_time"></div>
+            <div class="form-item"><label>报名人数</label><input v-model="addForm.sign_num"></div>
+            <div class="form-item"><label>签到人数</label><input v-model="addForm.checkin_num"></div>
+            <div class="form-item"><label>学时</label><input v-model="addForm.score"></div>
+            <div class="form-item"><label>活动状态</label><input v-model="addForm.activity_status" disabled></div>
+            <div class="form-item"><label>审核状态</label><input v-model="addForm.audit_status" disabled></div>
+            <div class="btns">
+                <button style="background:#ccc" @click="showAdd=false">取消</button>
+                <button style="background:#165DFF;color:#fff" @click="addSubmit">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mask" v-if="showEdit">
+        <div class="dialog" style="width:380px">
+            <h3 style="text-align:center;color:#165DFF">修改活动状态</h3>
+            <div class="form-item"><label>活动名称</label><input :value="editItem.activity_name" disabled></div>
+            <div class="form-item"><label>当前状态</label><input :value="editItem.activity_status" disabled></div>
+            <div class="form-item"><label>修改为</label><select v-model="editStatus"><option>未开始</option><option>进行中</option><option>已结束</option></select></div>
+            <div class="btns">
+                <button style="background:#ccc" @click="showEdit=false">取消</button>
+                <button style="background:#165DFF;color:#fff" @click="editSubmit">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                currentPage: 1,
+                list: [],
+                page: 1,
+                size: 20,
+                showAdd: false,
+                showEdit: false,
+                editItem: {},
+                editStatus: '',
+                // 真实数据
+                bigData: {
+                    total_activity: 0,
+                    total_sign: 0,
+                    total_checkin: 0,
+                    avg_score: 0,
+                    attendance_rate: 0
+                },
+                // 动画显示数据
+                showTotal: 0,
+                showSign: 0,
+                showCheckin: 0,
+                showScore: 0,
+                showRate: 0,
+
+                addForm: {
+                    activity_id: '',activity_name: '',activity_type: '',publish_unit: '',activity_level: '',
+                    activity_place: '',start_time: '',end_time: '',sign_num: '0',checkin_num: '0',score: '0',
+                    activity_status: '未开始',audit_status: '已通过'
+                },
+                charts: []
+            }
+        },
+        computed: {
+            totalPage() {
+                return Math.ceil(this.list.length / this.size)
+            },
+            pageList() {
+                let start = (this.page-1)*this.size
+                return this.list.slice(start, start+this.size)
+            }
+        },
+        mounted() {
+            this.getData()
+            this.getBigData()
+            setInterval(()=>{
+                this.getBigData()
+            },5000)
+        },
+        methods: {
+            // 获取统计数据 → 自动播放数字动画
+            async getBigData() {
+                try {
+                    let { data } = await axios.get("http://localhost:8080/api/stat/latest")
+                    let d = data.data || {}
+                    this.bigData.total_activity = Number(d.total_activity || 0)
+                    this.bigData.total_sign = Number(d.total_sign || 0)
+                    this.bigData.total_checkin = Number(d.total_checkin || 0)
+                    this.bigData.avg_score = Number(d.avg_score || 0)
+                    this.bigData.attendance_rate = Number(d.attendance_rate || 0)
+
+                    this.startNumberAnim()
+                } catch (e) { }
+            },
+
+            // ====================== ✅ 数字流动画核心 ======================
+            startNumberAnim() {
+                this.animateNumber('showTotal', this.bigData.total_activity, 800)
+                this.animateNumber('showSign', this.bigData.total_sign, 800)
+                this.animateNumber('showCheckin', this.bigData.total_checkin, 800)
+                this.animateNumber('showScore', this.bigData.avg_score, 800, 2)
+                this.animateNumber('showRate', this.bigData.attendance_rate, 800, 2)
+            },
+
+            animateNumber(key, target, duration, decimals = 0) {
+                let start = this[key]
+                let startTime = Date.now()
+                let step = () => {
+                    let p = Math.min(1, (Date.now() - startTime) / duration)
+                    let curr = start + (target - start) * p
+                    this[key] = decimals ? curr.toFixed(decimals) : Math.floor(curr)
+                    if (p < 1) requestAnimationFrame(step)
+                }
+                requestAnimationFrame(step)
+            },
+            // =================================================================
+
+            switchPage(p){
+                this.destroyAllCharts()
+                this.currentPage = p
+                if (p === 1) {
+                    setTimeout(()=>{
+                        this.drawAll()
+                    },300)
+                }
+            },
+            async getData() {
+                let {data} = await axios.get("http://localhost:8080/api/student/list")
+                this.list = data.data || []
+                if (this.currentPage === 1) {
+                    this.drawAll()
+                }
+            },
+            drawAll(){
+                this.drawChart1()
+                this.drawChart2()
+                this.drawChart3()
+                this.drawChart4()
+                this.drawChart5()
+                this.drawChart6()
+            },
+            destroyAllCharts(){
+                this.charts.forEach(chart => {
+                    if (chart && chart.dispose) {
+                        chart.dispose()
+                    }
+                })
+                this.charts = []
+            },
+            drawChart1(){
+                let chart = echarts.init(this.$refs.chart1)
+                this.charts.push(chart)
+                let data = {}
+                this.list.forEach(i=>data[i.activity_type] = (data[i.activity_type]||0)+1)
+                chart.setOption({
+                    title:{text:'活动类型统计',left:'center'},
+                    tooltip:{trigger:'item'},
+                    series:[{type:'pie',radius:['40%','70%'],data:Object.entries(data).map(([k,v])=>({name:k,value:v}))}]
+                })
+            },
+            drawChart2(){
+                let chart = echarts.init(this.$refs.chart2)
+                this.charts.push(chart)
+                let arr = ['校级','院级','班级级']
+                let data = arr.map(t=>this.list.filter(i=>i.activity_level==t).length)
+                chart.setOption({
+                    title:{text:'活动级别统计',left:'center'},
+                    tooltip:{trigger:'axis'},
+                    xAxis:{type:'category',data:arr},
+                    yAxis:{type:'value'},
+                    series:[{data,type:'bar',itemStyle:{color:'#165DFF'}}]
+                })
+            },
+            drawChart3(){
+                let chart = echarts.init(this.$refs.chart3)
+                this.charts.push(chart)
+                let data = {}
+                this.list.forEach(i=>data[i.activity_status] = (data[i.activity_status]||0)+1)
+                chart.setOption({
+                    title:{text:'活动状态统计',left:'center'},
+                    tooltip:{trigger:'item'},
+                    series:[{type:'funnel',data:Object.entries(data).map(([k,v])=>({name:k,value:v}))}]
+                })
+            },
+            drawChart4(){
+                let chart = echarts.init(this.$refs.chart4)
+                this.charts.push(chart)
+                let data = {}
+                this.list.forEach(i=>data[i.publish_unit] = (data[i.publish_unit]||0)+1)
+                chart.setOption({
+                    title:{text:'主办单位统计',left:'center'},
+                    tooltip:{trigger:'item'},
+                    series:[{type:'pie',data:Object.entries(data).map(([k,v])=>({name:k,value:v}))}]
+                })
+            },
+            drawChart5(){
+                let chart = echarts.init(this.$refs.chart5)
+                this.charts.push(chart)
+                let data = [0,0,0,0]
+                this.list.forEach(i=>{
+                    let s = Number(i.score)||0
+                    if(s<2) data[0]++
+                    else if(s<4) data[1]++
+                    else if(s<6) data[2]++
+                    else data[3]++
+                })
+                chart.setOption({
+                    title:{text:'学时统计',left:'center'},
+                    tooltip:{trigger:'axis'},
+                    xAxis:{data:['0-2','2-4','4-6','6+']},
+                    yAxis:{type:'value'},
+                    series:[{data,type:'line',smooth:true,itemStyle:{color:'#165DFF'}}]
+                })
+            },
+            drawChart6(){
+                let chart = echarts.init(this.$refs.chart6)
+                this.charts.push(chart)
+                let data = {}
+                this.list.forEach(i=>data[i.activity_place] = (data[i.activity_place]||0)+1)
+                chart.setOption({
+                    title:{text:'活动地点统计',left:'center'},
+                    tooltip:{trigger:'item'},
+                    series:[{type:'pie',radius:['40%','70%'],data:Object.entries(data).map(([k,v])=>({name:k,value:v}))}]
+                })
+            },
+            openAdd(){
+                this.showAdd = true
+                this.addForm = {
+                    activity_id: '',activity_name: '',activity_type: '',publish_unit: '',activity_level: '',
+                    activity_place: '',start_time: '',end_time: '',sign_num: '0',checkin_num: '0',score: '0',
+                    activity_status: '未开始',audit_status: '已通过'
+                }
+                setTimeout(()=>{
+                    flatpickr("#startTime",{locale:'zh',enableTime:true,dateFormat:'Y-m-d H:i'})
+                    flatpickr("#endTime",{locale:'zh',enableTime:true,dateFormat:'Y-m-d H:i'})
+                },200)
+            },
+            async addSubmit(){
+                await axios.post("http://localhost:8080/api/student/add",this.addForm)
+                alert("添加成功")
+                this.showAdd = false
+                this.getData()
+            },
+            openEdit(item){
+                this.editItem = item
+                this.editStatus = item.activity_status
+                this.showEdit = true
+            },
+            async editSubmit(){
+                await axios.post("http://localhost:8080/api/student/updateStatus",{
+                    rowKey:this.editItem.rowKey,
+                    activity_status:this.editStatus
+                })
+                alert("修改成功")
+                this.showEdit = false
+                this.getData()
+            },
+            async doDelete(item){
+                if(!confirm("确定删除？")) return
+                await axios.post("http://localhost:8080/api/student/delete",{rowKey:item.rowKey})
+                alert("删除成功")
+                this.getData()
+            }
+        }
+    })
+</script>
+</body>
+</html>
